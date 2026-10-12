@@ -263,12 +263,10 @@
             '<div class="def-col bad">' +
               '<h4>现象与成因</h4>' +
               '<p>' + d.cause + '</p>' +
-              '<div class="def-metric" data-metric="bad-' + d.id + '"><span class="k">实算中…</span></div>' +
             '</div>' +
             '<div class="def-col good">' +
               '<h4>改进措施</h4>' +
               '<p>' + d.fix + '</p>' +
-              '<div class="def-metric" data-metric="good-' + d.id + '"><span class="k">实算中…</span></div>' +
             '</div>' +
           '</div>' +
           '<div class="def-foot">' +

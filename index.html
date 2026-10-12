@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>人工势场法（APF）航路规划 · 交互演示</title>
+<title>人工势场航路规划展示</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,36 +11,15 @@
 <header class="hd">
   <div class="wrap">
     <div class="hd-main">
-      <div class="hd-title">人工势场法（APF）航路规划</div>
-      <div class="hd-sub">Artificial Potential Field &middot; 低空飞行器航路规划算法交互演示</div>
-    </div>
-    <div class="hd-meta">
-      <span class="tag">引力场</span>
-      <span class="tag">斥力场</span>
-      <span class="tag">合力合成</span>
-      <span class="tag">位置迭代</span>
+      <div class="hd-title">人工势场航路规划</div>
     </div>
   </div>
 </header>
-
-<nav class="nav">
-  <div class="wrap">
-    <a href="#sim">交互仿真台</a>
-    <a href="#field">势场可视化</a>
-    <a href="#math">公式讲解</a>
-    <a href="#defects">缺陷与改进</a>
-  </div>
-</nav>
-
 <main class="wrap">
 
 <!-- ============ 1 交互仿真台 ============ -->
 <section id="sim">
   <h2><span class="no">1</span>交互仿真台</h2>
-  <p class="lead">
-    下图为幻灯片中的任务场景：无人机从起点 <b>(0, 0)</b> 飞往目标终点 <b>(100, 100)</b>，途中需避开两个圆形禁飞区。
-    所有参数均可直接输入或拖动滑块调整，障碍物（禁飞区）可在画布上手动创建、拖动与缩放，航路以动画方式逐步生成。
-  </p>
 
   <div class="sim-grid">
 
@@ -49,8 +28,8 @@
       <div class="pnl-block">
         <div class="pnl-h">任务场景</div>
         <div class="btn-row">
-          <button class="btn" data-preset="slide1">幻灯片 &middot; 参数条件 1</button>
-          <button class="btn" data-preset="slide2">幻灯片 &middot; 参数条件 2</button>
+          <button class="btn" data-preset="slide1">参数条件 1</button>
+          <button class="btn" data-preset="slide2">参数条件 2</button>
           <button class="btn" data-preset="reset">清空重设</button>
         </div>
       </div>
@@ -128,29 +107,28 @@
         <div class="ctl-c">
           <label>斥力公式</label>
           <select data-sel="mode">
-            <option value="slide">幻灯片原式（含目标距离因子）</option>
-            <option value="khatib">经典 Khatib（无目标因子）</option>
+            <option value="slide">含目标距离因子</option>
+            <option value="khatib">Khatib（无目标因子）</option>
           </select>
         </div>
         <div class="ctl-c">
           <label>局部极小逃逸</label>
           <select data-sel="escape">
             <option value="none">关闭</option>
-            <option value="tangent">切向逃逸力（推荐）</option>
+            <option value="tangent">切向逃逸力</option>
             <option value="random">随机扰动</option>
           </select>
         </div>
       </div>
 
       <div class="pnl-block">
-        <div class="pnl-h">障碍物（禁飞区）</div>
+        <div class="pnl-h">障碍物</div>
         <div class="obs-list" id="obsList"></div>
         <div class="btn-row">
-          <button class="btn btn-blue" id="btnAddObs">＋ 添加障碍</button>
+          <button class="btn btn-blue" id="btnAddObs">添加障碍</button>
           <button class="btn" id="btnClearObs">清空障碍</button>
         </div>
-        <p class="hint" id="addHint">点击「添加障碍」后，在画布空白处点击即可放置；拖动圆心可移动，拖动外圈可缩放半径。<br>
-        注：<i>d<sub>obs</sub></i> 是斥力作用半径（软约束），<i>r</i> 是禁飞区半径（硬约束，用于安全判定）。幻灯片原式的斥力只由 <i>d<sub>obs</sub></i> 调控，因此改 <i>r</i> 不会改变航路形态，但会改变安全间隔读数。</p>
+        <p class="hint" id="addHint"></p>
       </div>
 
       <div class="pnl-block">
@@ -220,11 +198,10 @@
       <figcaption>三维势能曲面（网格投影）</figcaption>
     </figure>
   </div>
-  <div class="note" id="fieldNote"></div>
 </section>
 
 <!-- ============ 3 公式讲解 ============ -->
-<section id="math">
+<!-- <section id="math">
   <h2><span class="no">3</span>公式讲解</h2>
   <p class="lead">
     核心思路只有一句话：<b>把"去往目标"和"远离障碍"都写成力，二者矢量相加，沿着合力的方向走一小步，反复迭代。</b>
@@ -314,26 +291,15 @@
     </article>
 
   </div>
-</section>
+</section> -->
 
 <!-- ============ 4 缺陷与改进 ============ -->
 <section id="defects">
-  <h2><span class="no">4</span>常见缺陷与对应改进</h2>
-  <p class="lead">
-    人工势场法计算量小、实时性好，但存在若干固有缺陷。下面复现 6 个典型问题，
-    每个都给出<b>成因</b>、<b>改进措施</b>，并可直接一键载入仿真台查看前后对比。表中数值为页面加载时实算结果。
-  </p>
+  <h2><span class="no">3</span>常见缺陷与对应改进</h2>
   <div class="def-list" id="defList"></div>
 </section>
 
 </main>
-
-<footer class="ft">
-  <div class="wrap">
-    <div>人工势场法（APF）航路规划交互演示 · 算法与参数取自课程幻灯片：引力势场 / 斥力势场 / 力合成与位置迭代 / 任务条件 / 两组参数条件</div>
-    <div class="ft-s">坐标单位 km ｜ 起点 (0,0) ｜ 目标 (100,100) ｜ 禁飞区 (20,40) r=17.5、(80,60) r=17.5</div>
-  </div>
-</footer>
 
 <script src="js/config.js"></script>
 <script src="js/apf.js"></script>
