@@ -189,14 +189,14 @@
     if (fieldTimer) { clearTimeout(fieldTimer); fieldTimer = null; }
     var run = function () {
       var p = state.scene.params, v = view.view;
-      F.render2D(els.field2d, v, state.scene, p, state.fieldKind);
-      F.render3D(els.field3d, v, state.scene, p, state.fieldKind);
+      if (els.field2d) F.render2D(els.field2d, v, state.scene, p, state.fieldKind);
+      if (els.field3d) F.render3D(els.field3d, v, state.scene, p, state.fieldKind);
       var notes = {
         att: '引力场 U_att(q)：目标点是唯一的最低点，呈“漏斗形”。距离较远处切换为圆锥势场，梯度大小恒定，避免引力无限增大。',
         rep: '斥力场 U_rep(q)：每个禁飞区在影响半径 d_obs 内形成一道陡壁，越贴近边界势能越高，在边界处趋于无穷大，从而形成“硬墙”。',
         total: '合成势场 U = U_att + U_rep：谷底是目标点，四周是障碍物筑起的“山峰”。无人机沿负梯度方向运动，即可绕开山峰、滚向谷底。'
       };
-      els.fieldNote.textContent = notes[state.fieldKind];
+      if (els.fieldNote) els.fieldNote.textContent = notes[state.fieldKind];
     };
     if (now) run(); else fieldTimer = setTimeout(run, 90);
   }
@@ -323,11 +323,12 @@
 
   /* ================= 幻灯片参考值对照 ================= */
   function fillSlideRefs() {
+    var e1 = $('#mLen1'), e2 = $('#mLen2');
+    if (!e1 || !e2) return;                 /* 幻灯片对照段落已被移除，跳过计算 */
     var r1 = A.simulate(CFG.slideScene());
     var r2 = A.simulate(CFG.cond2Scene());
-    var e1 = $('#mLen1'), e2 = $('#mLen2');
-    if (e1) e1.textContent = fmt(r1.length) + ' km（幻灯片参考 149.2545 km，误差 ' + fmt(Math.abs(r1.length - 149.2545) / 149.2545 * 100, 2) + '%）';
-    if (e2) e2.textContent = fmt(r2.length) + ' km（幻灯片参考 168.0207 km，误差 ' + fmt(Math.abs(r2.length - 168.0207) / 168.0207 * 100, 2) + '%）';
+    e1.textContent = fmt(r1.length) + ' km（幻灯片参考 149.2545 km，误差 ' + fmt(Math.abs(r1.length - 149.2545) / 149.2545 * 100, 2) + '%）';
+    e2.textContent = fmt(r2.length) + ' km（幻灯片参考 168.0207 km，误差 ' + fmt(Math.abs(r2.length - 168.0207) / 168.0207 * 100, 2) + '%）';
   }
 
   /* ================= 初始化 ================= */
