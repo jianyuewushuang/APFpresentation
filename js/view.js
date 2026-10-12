@@ -195,10 +195,8 @@
       var ob = this.scene.obstacles[k];
       var pos = this.result && this.result.moving ? this.result.obsFrames[this.progress][k] : ob;
       var px = this.X(pos.x), py = this.Y(pos.y), pr = Math.abs(this.X(pos.x + pos.r) - this.X(pos.x));
+      /* 禁飞区全透明，只画轮廓（不遮挡背后的势场与航路） */
       ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2);
-      /* 叠加热力图时改用半透明白底，避免蓝色禁飞区与蓝色势场混成一片 */
-      ctx.fillStyle = onField ? 'rgba(255,255,255,.62)' : 'rgba(207,224,251,.85)';
-      ctx.fill();
       ctx.strokeStyle = onField ? '#c92a2a' : '#0b5cd5'; ctx.lineWidth = 1.6; ctx.stroke();
       ctx.fillStyle = onField ? '#c92a2a' : '#0b5cd5'; ctx.font = 'bold 10px Consolas, monospace';
       ctx.fillText('#' + (k + 1), px - 7, py + 3.5);

@@ -182,7 +182,7 @@ input[type="range"]::-moz-range-thumb { width: 10px; height: 18px; background: v
 .lg { width: 11px; height: 11px; display: inline-block; }
 .lg-start { background: var(--green); transform: rotate(45deg); }
 .lg-goal { background: var(--red); }
-.lg-obs { background: #cfe0fb; border: 1px solid var(--blue); }
+.lg-obs { background: transparent; border: 1.5px solid var(--blue); }
 .lg-path { background: none; border-top: 2.5px solid var(--red); height: 0; }
 .lg-drone { background: var(--blue); border: 1px solid #fff; }
 
