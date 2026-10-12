@@ -179,10 +179,6 @@
 <!-- ============ 2 势场可视化 ============ -->
 <section id="field">
   <h2><span class="no">2</span>势场可视化</h2>
-  <p class="lead">
-    左为势场平面热力图（颜色越深代表势能越高），右为对应的三维曲面——正是幻灯片中引力场呈"漏斗形"、斥力场呈"陡壁形"的形态。
-    切换视角可分别观察引力场、斥力场与二者叠加后的合成势场。
-  </p>
   <div class="seg" id="fieldSeg">
     <button class="seg-btn on" data-field="att">引力场 U<sub>att</sub></button>
     <button class="seg-btn" data-field="rep">斥力场 U<sub>rep</sub></button>
@@ -191,11 +187,9 @@
   <div class="field-grid">
     <figure class="card">
       <canvas id="field2d"></canvas>
-      <figcaption>平面热力图（等势线示意）</figcaption>
     </figure>
     <figure class="card">
       <canvas id="field3d"></canvas>
-      <figcaption>三维势能曲面（网格投影）</figcaption>
     </figure>
   </div>
 </section>
