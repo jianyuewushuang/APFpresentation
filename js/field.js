@@ -139,6 +139,32 @@
     }
   }
 
+  /* 生成一张离屏热力图（供势场区块与仿真台共用）。
+     返回 {canvas, g, W, H}：canvas 按"铺满画布"的映射可直接 drawImage 到绘图区；
+     g 为归一化后的网格，用于叠加等势线。 */
+  function buildHeatmap(view, scene, p, kind, W, H) {
+    W = W || 200; H = H || 144;
+    var s = sample(scene, p, kind, W, H, view);
+    var vmax = fieldMax(scene, p, kind, view);
+    var g = new Float64Array(W * H), n;
+    for (n = 0; n < W * H; n++) g[n] = norm(s[n], vmax, kind);
+
+    var off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    var octx = off.getContext('2d');
+    var img = octx.createImageData(W, H);
+    for (var j = 0; j < H; j++) {
+      var row = (H - 1 - j) * W;          /* 上下翻转：画布顶部 = 世界 y 最大值 */
+      for (var i = 0; i < W; i++) {
+        var c = ramp(g[row + i]);
+        var o = (j * W + i) * 4;
+        img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+      }
+    }
+    octx.putImageData(img, 0, 0);
+    return { canvas: off, g: g, W: W, H: H };
+  }
+
   /* ---------------- 绘图区映射（铺满画布） ---------------- */
   function fitCanvas(canvas, ratio) {
     var dpr = window.devicePixelRatio || 1;
@@ -231,38 +257,18 @@
   /* ---------------- ① 平面热力图 ---------------- */
   function render2D(canvas, view, scene, p, kind) {
     var W = 200, H = 144;
-    var s = sample(scene, p, kind, W, H, view);
-    var vmax = fieldMax(scene, p, kind, view);
+    var hm = buildHeatmap(view, scene, p, kind, W, H);
     var f = fitCanvas(canvas, 0.72);
     var ctx = f.ctx, cw = f.cw, ch = f.ch;
     var MAP = makeMap(cw, ch, view);
     var dx = (view.x1 - view.x0) / W, dy = (view.y1 - view.y0) / H;
 
-    /* 归一化网格 */
-    var g = new Float64Array(W * H);
-    for (var n = 0; n < W * H; n++) g[n] = norm(s[n], vmax, kind);
-
-    /* 像素图：注意第 0 行必须是屏幕最上方 = 世界 y 最大值 */
-    var off = document.createElement('canvas');
-    off.width = W; off.height = H;
-    var octx = off.getContext('2d');
-    var img = octx.createImageData(W, H);
-    for (var j = 0; j < H; j++) {
-      var row = (H - 1 - j) * W;          /* 上下翻转，使 y 大者在画布上方 */
-      for (var i = 0; i < W; i++) {
-        var c = ramp(g[row + i]);
-        var o = (j * W + i) * 4;
-        img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
-      }
-    }
-    octx.putImageData(img, 0, 0);
-
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(off, 0, 0, cw, ch);
+    ctx.drawImage(hm.canvas, 0, 0, cw, ch);
 
     /* 等势线：与热力图使用同一套归一化值，故线一定落在同色区间上 */
     var levels = [0.14, 0.28, 0.42, 0.56, 0.70, 0.82, 0.92];
-    strokeContours(ctx, g, W, H, MAP.X, MAP.Y, view.x0, view.y0, dx, dy, levels);
+    strokeContours(ctx, hm.g, W, H, MAP.X, MAP.Y, view.x0, view.y0, dx, dy, levels);
 
     overlayCommon(ctx, cw, ch, view, scene, MAP, { grid: true, influence: kind !== 'att', dObs: p.dObs });
 
@@ -374,6 +380,9 @@
   global.APFField = {
     render2D: render2D,
     render3D: render3D,
+    buildHeatmap: buildHeatmap,
+    contourLevels: [0.14, 0.28, 0.42, 0.56, 0.70, 0.82, 0.92],
+    strokeContours: strokeContours,
     potentialAt: potentialAt,
     norm: norm,
     ramp: ramp,

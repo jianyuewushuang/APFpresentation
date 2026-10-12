@@ -133,6 +133,15 @@
 
       <div class="pnl-block">
         <div class="pnl-h">显示选项</div>
+        <label class="chk"><input type="checkbox" data-chk="field" checked> 势场热力图</label>
+        <div class="ctl-c">
+          <label>叠加势场</label>
+          <select data-sel="stageField">
+            <option value="total">合成势场 U</option>
+            <option value="att">引力场 U<sub>att</sub></option>
+            <option value="rep">斥力场 U<sub>rep</sub></option>
+          </select>
+        </div>
         <label class="chk"><input type="checkbox" data-chk="vec"> 势场力矢量网格</label>
         <label class="chk"><input type="checkbox" data-chk="influence" checked> 斥力影响范围</label>
         <label class="chk"><input type="checkbox" data-chk="force"> 当前步受力箭头</label>
@@ -143,7 +152,7 @@
     <!-- 舞台 -->
     <div class="stage">
       <div class="stage-head">
-        <div class="stage-title" id="stageTitle">幻灯片任务 · 参数条件 1</div>
+        <div class="stage-title" id="stageTitle">参数条件 1</div>
         <div class="stage-tools">
           <button class="btn btn-blue" id="btnPlay">▶ 播放路径动画</button>
           <button class="btn" id="btnStep">单步</button>

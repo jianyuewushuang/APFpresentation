@@ -15,7 +15,12 @@
     this.result = null;
     this.view = null;
     this.progress = 0;
-    this.opts = { vec: false, influence: true, force: true, grid: true };
+    this.opts = { vec: false, influence: true, force: true, grid: true, field: false };
+    this.fieldKind = 'total';      // 叠加到仿真台上的势场类型：att | rep | total
+    this.params = null;            // 当前参数（由 setResult 注入），用于生成热力图
+    this._field = null;            // 热力图离屏缓存
+    this._fieldKey = '';
+    this._fieldT = 0;
     this.addMode = false;
     this.drag = null;
     this.onChange = null;
@@ -53,7 +58,7 @@
   /* keepView=true 时保持当前视野（拖动/调参时不跳动）；progress 为 null 则跳到终点 */
   View.prototype.setResult = function (result, keepView, progress) {
     this.result = result;
-    if (result) this.scene = result.scene;
+    if (result) { this.scene = result.scene; this.params = result.params; }
     if (!keepView) this.view = A.computeView(this.scene, result, ASPECT);
     this.fitCanvas();
     var last = result ? result.frames.length - 1 : 0;
@@ -79,23 +84,65 @@
     this.progress = Math.max(0, Math.min(n, this.result.frames.length - 1));
   };
 
+  /* ---------- 势场热力图叠加（离屏缓存，避免动画时每帧重算） ---------- */
+  View.prototype.fieldKey = function () {
+    if (!this.scene || !this.params || !this.view) return '';
+    var s = this.scene, p = this.params, v = this.view;
+    var parts = [this.fieldKind, p.kAtt, p.dT, p.kRep, p.dObs, p.n, p.mode,
+      v.x0.toFixed(2), v.x1.toFixed(2), v.y0.toFixed(2), v.y1.toFixed(2),
+      s.start.x.toFixed(1), s.start.y.toFixed(1), s.goal.x.toFixed(1), s.goal.y.toFixed(1)];
+    for (var i = 0; i < s.obstacles.length; i++) {
+      parts.push(s.obstacles[i].x.toFixed(1), s.obstacles[i].y.toFixed(1), s.obstacles[i].r.toFixed(1));
+    }
+    return parts.join('|');
+  };
+
+  View.prototype.drawField = function () {
+    var cw = this.canvas.clientWidth, ch = this.canvas.clientHeight;
+    var key = this.fieldKey();
+    if (!key) return;
+    var F = global.APFField, self = this;
+    /* 拖动/调参时限制重建频率：先沿用旧图，过 100 ms 再刷新；
+       节流期内另排一次延时重绘，保证松手后画面一定是最新的 */
+    if (key !== this._fieldKey) {
+      if (!this._field || (Date.now() - this._fieldT) > 100) {
+        this._field = F.buildHeatmap(this.view, this.scene, this.params, this.fieldKind, 220, 152);
+        this._fieldKey = key;
+        this._fieldT = Date.now();
+      } else {
+        if (this._fieldTimer) clearTimeout(this._fieldTimer);
+        this._fieldTimer = setTimeout(function () { self.draw(); }, 130);
+      }
+    }
+    var ctx = this.ctx;
+    ctx.imageSmoothingEnabled = true;
+    ctx.save();
+    ctx.globalAlpha = 0.7;          /* 作为底图时降低浓度，保持整页"白底 + 蓝色点缀"的观感 */
+    ctx.drawImage(this._field.canvas, 0, 0, cw, ch);
+    ctx.restore();
+  };
+
   /* ---------- 绘制 ---------- */
   View.prototype.draw = function () {
     if (!this.scene || !this.view) return;
     var ctx = this.ctx, self = this;
     var cw = this.canvas.clientWidth, ch = this.canvas.clientHeight;
     var v = this.view;
+    var onField = this.opts.field && !!this.params;
 
     ctx.clearRect(0, 0, cw, ch);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, cw, ch);
+
+    /* 势场热力图（最底层） */
+    if (onField) this.drawField();
 
     var span = Math.max(v.x1 - v.x0, v.y1 - v.y0);
     var step = span > 400 ? 100 : (span > 200 ? 50 : (span > 90 ? 20 : (span > 40 ? 10 : 5)));
 
     /* 网格 */
     if (this.opts.grid) {
-      ctx.strokeStyle = '#eef1f5'; ctx.lineWidth = 1;
+      ctx.strokeStyle = onField ? 'rgba(255,255,255,.45)' : '#eef1f5'; ctx.lineWidth = 1;
       var gx = Math.ceil(v.x0 / step) * step;
       for (; gx <= v.x1; gx += step) {
         ctx.beginPath(); ctx.moveTo(this.X(gx), 0); ctx.lineTo(this.X(gx), ch); ctx.stroke();
@@ -104,23 +151,31 @@
       for (; gy <= v.y1; gy += step) {
         ctx.beginPath(); ctx.moveTo(0, this.Y(gy)); ctx.lineTo(cw, this.Y(gy)); ctx.stroke();
       }
-      ctx.strokeStyle = '#d3d8df';
+      ctx.strokeStyle = onField ? 'rgba(255,255,255,.70)' : '#d3d8df';
       if (v.y0 < 0 && v.y1 > 0) { ctx.beginPath(); ctx.moveTo(0, this.Y(0)); ctx.lineTo(cw, this.Y(0)); ctx.stroke(); }
       if (v.x0 < 0 && v.x1 > 0) { ctx.beginPath(); ctx.moveTo(this.X(0), 0); ctx.lineTo(this.X(0), ch); ctx.stroke(); }
-      ctx.fillStyle = '#98a2ad'; ctx.font = '10px Consolas, monospace';
+      ctx.font = '10px Consolas, monospace';
+      /* 叠加热力图时给刻度加白色描边，保证深浅背景上都看得清 */
+      if (onField) { ctx.save(); ctx.shadowColor = 'rgba(255,255,255,.95)'; ctx.shadowBlur = 4; }
+      ctx.fillStyle = onField ? '#1b2430' : '#98a2ad';
       for (gx = Math.ceil(v.x0 / step) * step; gx <= v.x1; gx += step) ctx.fillText(gx + '', this.X(gx) + 3, ch - 5);
       for (gy = Math.ceil(v.y0 / step) * step; gy <= v.y1; gy += step) {
         if (!(v.y0 < 0 && v.y1 > 0 && Math.abs(gy) < step * 0.5)) ctx.fillText(gy + '', 4, this.Y(gy) - 3);
       }
-      ctx.fillStyle = '#5a636e';
+      ctx.fillStyle = onField ? '#1b2430' : '#5a636e';
       ctx.fillText('y/km', 4, 13);
       ctx.fillText('x/km', cw - 34, ch - 5);
+      if (onField) ctx.restore();
     }
 
     /* 斥力影响范围 */
     if (this.opts.influence && this.scene.obstacles.length) {
       ctx.save();
-      ctx.setLineDash([4, 4]); ctx.strokeStyle = '#9dbdf0'; ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = onField ? 'rgba(20,45,90,.6)' : '#9dbdf0';
+      ctx.lineWidth = 1;
+      /* 底色明暗跨度大，加白色描边保证虚线在任何区域都看得见 */
+      if (onField) { ctx.shadowColor = 'rgba(255,255,255,.95)'; ctx.shadowBlur = 3; }
       for (var i = 0; i < this.scene.obstacles.length; i++) {
         var o = this.scene.obstacles[i];
         var p = this.result && this.result.moving ? this.result.obsFrames[this.progress][i] : o;
@@ -141,9 +196,11 @@
       var pos = this.result && this.result.moving ? this.result.obsFrames[this.progress][k] : ob;
       var px = this.X(pos.x), py = this.Y(pos.y), pr = Math.abs(this.X(pos.x + pos.r) - this.X(pos.x));
       ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(207,224,251,.85)'; ctx.fill();
-      ctx.strokeStyle = '#0b5cd5'; ctx.lineWidth = 1.6; ctx.stroke();
-      ctx.fillStyle = '#0b5cd5'; ctx.font = 'bold 10px Consolas, monospace';
+      /* 叠加热力图时改用半透明白底，避免蓝色禁飞区与蓝色势场混成一片 */
+      ctx.fillStyle = onField ? 'rgba(255,255,255,.62)' : 'rgba(207,224,251,.85)';
+      ctx.fill();
+      ctx.strokeStyle = onField ? '#c92a2a' : '#0b5cd5'; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.fillStyle = onField ? '#c92a2a' : '#0b5cd5'; ctx.font = 'bold 10px Consolas, monospace';
       ctx.fillText('#' + (k + 1), px - 7, py + 3.5);
       /* 半径手柄 */
       ctx.strokeStyle = '#0b5cd5'; ctx.fillStyle = '#fff'; ctx.lineWidth = 1.4;
@@ -270,8 +327,9 @@
         var x0 = this.X(wx), y0 = this.Y(wy);
         var ux = fx / mag, uy = -fy / mag;
         var x1 = x0 + ux * L, y1 = y0 + uy * L;
-        ctx.strokeStyle = 'rgba(11,92,213,.45)';
-        ctx.fillStyle = 'rgba(11,92,213,.45)';
+        var col = this.opts.field ? 'rgba(17,20,23,.50)' : 'rgba(11,92,213,.45)';
+        ctx.strokeStyle = col;
+        ctx.fillStyle = col;
         ctx.beginPath(); ctx.moveTo(x0 - ux * L * 0.5, y0 - uy * L * 0.5); ctx.lineTo(x1, y1); ctx.stroke();
         ctx.beginPath();
         ctx.moveTo(x1, y1);

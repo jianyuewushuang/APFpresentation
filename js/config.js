@@ -41,7 +41,7 @@
   /* ---------- 场景构造 ---------- */
   function slideScene() {
     return {
-      title: '幻灯片任务 · 参数条件 1',
+      title: '参数条件 1',
       start: { x: 0, y: 0 },
       goal: { x: 100, y: 100 },
       obstacles: SLIDE_OBSTACLES.map(function (o) { return { x: o.x, y: o.y, r: o.r }; }),
@@ -51,7 +51,7 @@
 
   function cond2Scene() {
     var s = slideScene();
-    s.title = '幻灯片任务 · 参数条件 2';
+    s.title = '参数条件 2';
     s.params.kRep = 140;
     s.params.dObs = 40;
     return s;

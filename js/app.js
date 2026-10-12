@@ -435,6 +435,16 @@
       });
     });
 
+    /* 仿真台叠加的势场类型 */
+    var selStageField = $('[data-sel="stageField"]');
+    if (selStageField) {
+      view.fieldKind = selStageField.value;
+      selStageField.addEventListener('change', function () {
+        view.fieldKind = selStageField.value;
+        view.draw();
+      });
+    }
+
     /* 势场切换 */
     $$('#fieldSeg .seg-btn').forEach(function (b) {
       b.addEventListener('click', function () {
