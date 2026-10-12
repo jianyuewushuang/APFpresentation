@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人工势场法（APF）航路规划 · 交互演示</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hd">
+  <div class="wrap">
+    <div class="hd-main">
+      <div class="hd-title">人工势场法（APF）航路规划</div>
+      <div class="hd-sub">Artificial Potential Field &middot; 低空飞行器航路规划算法交互演示</div>
+    </div>
+    <div class="hd-meta">
+      <span class="tag">引力场</span>
+      <span class="tag">斥力场</span>
+      <span class="tag">合力合成</span>
+      <span class="tag">位置迭代</span>
+    </div>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="wrap">
+    <a href="#sim">交互仿真台</a>
+    <a href="#field">势场可视化</a>
+    <a href="#math">公式讲解</a>
+    <a href="#defects">缺陷与改进</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ============ 1 交互仿真台 ============ -->
+<section id="sim">
+  <h2><span class="no">1</span>交互仿真台</h2>
+  <p class="lead">
+    下图为幻灯片中的任务场景：无人机从起点 <b>(0, 0)</b> 飞往目标终点 <b>(100, 100)</b>，途中需避开两个圆形禁飞区。
+    所有参数均可直接输入或拖动滑块调整，障碍物（禁飞区）可在画布上手动创建、拖动与缩放，航路以动画方式逐步生成。
+  </p>
+
+  <div class="sim-grid">
+
+    <!-- 控制面板 -->
+    <aside class="panel">
+      <div class="pnl-block">
+        <div class="pnl-h">任务场景</div>
+        <div class="btn-row">
+          <button class="btn" data-preset="slide1">幻灯片 &middot; 参数条件 1</button>
+          <button class="btn" data-preset="slide2">幻灯片 &middot; 参数条件 2</button>
+          <button class="btn" data-preset="reset">清空重设</button>
+        </div>
+      </div>
+
+      <div class="pnl-block">
+        <div class="pnl-h">算法参数</div>
+
+        <div class="ctl" data-ctl="kAtt">
+          <label>引力尺度因子 <i>K<sub>att</sub></i></label>
+          <div class="ctl-in">
+            <input type="range" data-range="kAtt" min="0" max="20" step="0.05">
+            <input type="number" data-num="kAtt" step="0.05">
+          </div>
+        </div>
+
+        <div class="ctl" data-ctl="dT">
+          <label>引力距离因子 <i>d<sub>t</sub></i><span class="unit">km</span></label>
+          <div class="ctl-in">
+            <input type="range" data-range="dT" min="1" max="80" step="1">
+            <input type="number" data-num="dT" step="1">
+          </div>
+        </div>
+
+        <div class="ctl" data-ctl="kRep">
+          <label>斥力尺度因子 <i>K<sub>rep</sub></i></label>
+          <div class="ctl-in">
+            <input type="range" data-range="kRep" min="0" max="500" step="0.25">
+            <input type="number" data-num="kRep" step="0.25">
+          </div>
+        </div>
+
+        <div class="ctl" data-ctl="dObs">
+          <label>斥力距离因子 <i>d<sub>obs</sub></i><span class="unit">km</span></label>
+          <div class="ctl-in">
+            <input type="range" data-range="dObs" min="1" max="80" step="0.5">
+            <input type="number" data-num="dObs" step="0.5">
+          </div>
+        </div>
+
+        <div class="ctl" data-ctl="eta">
+          <label>迭代步长 <i>&eta;</i><span class="unit">km/步</span></label>
+          <div class="ctl-in">
+            <input type="range" data-range="eta" min="0.005" max="1.5" step="0.005">
+            <input type="number" data-num="eta" step="0.005">
+          </div>
+        </div>
+
+        <div class="ctl" data-ctl="n">
+          <label>斥力幂次因子 <i>n</i></label>
+          <div class="ctl-in">
+            <input type="range" data-range="n" min="1" max="4" step="1">
+            <input type="number" data-num="n" step="1">
+          </div>
+        </div>
+
+        <div class="ctl" data-ctl="maxDisp">
+          <label>单步位移限幅<span class="unit">km/步</span></label>
+          <div class="ctl-in">
+            <input type="range" data-range="maxDisp" min="0.1" max="10" step="0.1">
+            <input type="number" data-num="maxDisp" step="0.1">
+          </div>
+        </div>
+
+        <div class="ctl" data-ctl="kv">
+          <label>相对速度避让增益 <i>K<sub>v</sub></i></label>
+          <div class="ctl-in">
+            <input type="range" data-range="kv" min="0" max="300" step="5">
+            <input type="number" data-num="kv" step="5">
+          </div>
+        </div>
+      </div>
+
+      <div class="pnl-block">
+        <div class="pnl-h">公式与策略</div>
+        <div class="ctl-c">
+          <label>斥力公式</label>
+          <select data-sel="mode">
+            <option value="slide">幻灯片原式（含目标距离因子）</option>
+            <option value="khatib">经典 Khatib（无目标因子）</option>
+          </select>
+        </div>
+        <div class="ctl-c">
+          <label>局部极小逃逸</label>
+          <select data-sel="escape">
+            <option value="none">关闭</option>
+            <option value="tangent">切向逃逸力（推荐）</option>
+            <option value="random">随机扰动</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="pnl-block">
+        <div class="pnl-h">障碍物（禁飞区）</div>
+        <div class="obs-list" id="obsList"></div>
+        <div class="btn-row">
+          <button class="btn btn-blue" id="btnAddObs">＋ 添加障碍</button>
+          <button class="btn" id="btnClearObs">清空障碍</button>
+        </div>
+        <p class="hint" id="addHint">点击「添加障碍」后，在画布空白处点击即可放置；拖动圆心可移动，拖动外圈可缩放半径。<br>
+        注：<i>d<sub>obs</sub></i> 是斥力作用半径（软约束），<i>r</i> 是禁飞区半径（硬约束，用于安全判定）。幻灯片原式的斥力只由 <i>d<sub>obs</sub></i> 调控，因此改 <i>r</i> 不会改变航路形态，但会改变安全间隔读数。</p>
+      </div>
+
+      <div class="pnl-block">
+        <div class="pnl-h">显示选项</div>
+        <label class="chk"><input type="checkbox" data-chk="vec"> 势场力矢量网格</label>
+        <label class="chk"><input type="checkbox" data-chk="influence" checked> 斥力影响范围</label>
+        <label class="chk"><input type="checkbox" data-chk="force"> 当前步受力箭头</label>
+        <label class="chk"><input type="checkbox" data-chk="grid" checked> 坐标网格</label>
+      </div>
+    </aside>
+
+    <!-- 舞台 -->
+    <div class="stage">
+      <div class="stage-head">
+        <div class="stage-title" id="stageTitle">幻灯片任务 · 参数条件 1</div>
+        <div class="stage-tools">
+          <button class="btn btn-blue" id="btnPlay">▶ 播放路径动画</button>
+          <button class="btn" id="btnStep">单步</button>
+          <button class="btn" id="btnEnd">直达终点</button>
+          <button class="btn" id="btnReplay">重算</button>
+        </div>
+      </div>
+
+      <div class="canvas-box">
+        <canvas id="stage"></canvas>
+        <div class="legend">
+          <span><i class="lg lg-start"></i>起点</span>
+          <span><i class="lg lg-goal"></i>目标终点</span>
+          <span><i class="lg lg-obs"></i>禁飞区</span>
+          <span><i class="lg lg-path"></i>规划航路</span>
+          <span><i class="lg lg-drone"></i>当前无人机</span>
+        </div>
+      </div>
+
+      <div class="prog">
+        <span class="prog-l">进程</span>
+        <input type="range" id="progress" min="0" max="0" value="0" step="1">
+        <span class="prog-v" id="progText">0 / 0</span>
+        <span class="prog-l">动画速度</span>
+        <input type="range" id="speed" min="1" max="600" value="60" step="1" class="speed">
+      </div>
+
+      <div class="readout" id="readout"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 势场可视化 ============ -->
+<section id="field">
+  <h2><span class="no">2</span>势场可视化</h2>
+  <p class="lead">
+    左为势场平面热力图（颜色越深代表势能越高），右为对应的三维曲面——正是幻灯片中引力场呈"漏斗形"、斥力场呈"陡壁形"的形态。
+    切换视角可分别观察引力场、斥力场与二者叠加后的合成势场。
+  </p>
+  <div class="seg" id="fieldSeg">
+    <button class="seg-btn on" data-field="att">引力场 U<sub>att</sub></button>
+    <button class="seg-btn" data-field="rep">斥力场 U<sub>rep</sub></button>
+    <button class="seg-btn" data-field="total">合成势场 U</button>
+  </div>
+  <div class="field-grid">
+    <figure class="card">
+      <canvas id="field2d"></canvas>
+      <figcaption>平面热力图（等势线示意）</figcaption>
+    </figure>
+    <figure class="card">
+      <canvas id="field3d"></canvas>
+      <figcaption>三维势能曲面（网格投影）</figcaption>
+    </figure>
+  </div>
+  <div class="note" id="fieldNote"></div>
+</section>
+
+<!-- ============ 3 公式讲解 ============ -->
+<section id="math">
+  <h2><span class="no">3</span>公式讲解</h2>
+  <p class="lead">
+    核心思路只有一句话：<b>把"去往目标"和"远离障碍"都写成力，二者矢量相加，沿着合力的方向走一小步，反复迭代。</b>
+    无人机始终沿着合成势场的负梯度方向运动。
+  </p>
+
+  <div class="math-grid">
+
+    <article class="card">
+      <h3>① 引力势场 <span class="sm">U<sub>att</sub>(q)</span></h3>
+      <p class="mnote">围绕目标设计，把目标点设为势能最低点。近处用二次势场保证平滑收敛，远处切换为圆锥势场，避免距离极远时引力无限增大。</p>
+      <div class="fml">
+        <span class="fl">U<sub>att</sub>(q) =</span>
+        <div class="cases">
+          <div class="case"><span class="fc">½ K<sub>att</sub> ‖q − q<sub>g</sub>‖²</span><span class="fd">‖q − q<sub>g</sub>‖ ≤ d<sub>t</sub></span></div>
+          <div class="case"><span class="fc">d<sub>t</sub>K<sub>att</sub>‖q − q<sub>g</sub>‖ − ½ K<sub>att</sub>d<sub>t</sub>²</span><span class="fd">‖q − q<sub>g</sub>‖ &gt; d<sub>t</sub></span></div>
+        </div>
+      </div>
+      <p class="mnote">引力即引力势场的负梯度：</p>
+      <div class="fml">
+        <span class="fl">F<sub>att</sub>(q) = −∇U<sub>att</sub>(q) =</span>
+        <div class="cases">
+          <div class="case"><span class="fc">−K<sub>att</sub>(q − q<sub>g</sub>)</span><span class="fd">‖q − q<sub>g</sub>‖ ≤ d<sub>t</sub></span></div>
+          <div class="case"><span class="fc">−d<sub>t</sub>K<sub>att</sub>(q − q<sub>g</sub>)/‖q − q<sub>g</sub>‖</span><span class="fd">‖q − q<sub>g</sub>‖ &gt; d<sub>t</sub></span></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <h3>② 斥力势场 <span class="sm">U<sub>rep</sub>(q)</span></h3>
+      <p class="mnote">围绕障碍设计，核心思想是离障碍越近斥力势能越大，引导无人机避开障碍。仅当进入影响半径 <i>d<sub>obs</sub></i> 内才起作用。</p>
+      <div class="fml">
+        <span class="fl">U<sub>rep</sub>(q) =</span>
+        <div class="cases">
+          <div class="case"><span class="fc">½ K<sub>rep</sub>(1/‖q−q<sub>obs</sub>‖ − 1/d<sub>obs</sub>)² ‖q − q<sub>g</sub>‖<sup>n</sup></span><span class="fd">‖q−q<sub>obs</sub>‖ ≤ d<sub>obs</sub></span></div>
+          <div class="case"><span class="fc">0</span><span class="fd">‖q−q<sub>obs</sub>‖ &gt; d<sub>obs</sub></span></div>
+        </div>
+      </div>
+      <p class="mnote">其中 <i>n</i> 为幂次因子。乘上 ‖q − q<sub>g</sub>‖<sup>n</sup> 是标准的"目标不可达"改进项：使目标点处斥力恰好为零。</p>
+      <div class="fml">
+        <span class="fl">F<sub>rep</sub>(q) = −∇U<sub>rep</sub>(q) =</span>
+        <div class="cases">
+          <div class="case"><span class="fc">a<sub>1</sub>K<sub>rep</sub>(1/d − 1/d<sub>obs</sub>)(1/d²)‖q−q<sub>g</sub>‖<sup>n</sup> + a<sub>2</sub>(n/2)K<sub>rep</sub>(1/d − 1/d<sub>obs</sub>)²‖q−q<sub>g</sub>‖<sup>n−1</sup></span><span class="fd">d ≤ d<sub>obs</sub></span></div>
+          <div class="case"><span class="fc">0</span><span class="fd">d &gt; d<sub>obs</sub></span></div>
+        </div>
+      </div>
+      <p class="mnote">方向单位向量：<i>a<sub>1</sub></i> = (q − q<sub>obs</sub>)/‖q − q<sub>obs</sub>‖（远离障碍），<i>a<sub>2</sub></i> = (q<sub>g</sub> − q)/‖q<sub>g</sub> − q‖（指向目标），<i>d</i> = ‖q − q<sub>obs</sub>‖。</p>
+    </article>
+
+    <article class="card">
+      <h3>③ 合力合成与位置迭代</h3>
+      <p class="mnote">把所有引力与斥力矢量相加，得到当前位置的人工合力；再按简化运动模型（一阶欧拉积分）向前走一步。</p>
+      <div class="fml one">
+        <span class="fl">F(q) = F<sub>att</sub>(q) + Σ F<sub>rep</sub>(q)</span>
+      </div>
+      <div class="fml one">
+        <span class="fl">x(k+1) = x(k) + &eta; · Σ F<sub>x</sub>(k)</span>
+      </div>
+      <div class="fml one">
+        <span class="fl">y(k+1) = y(k) + &eta; · Σ F<sub>y</sub>(k)</span>
+      </div>
+      <p class="mnote">
+        <i>&eta;</i> 为迭代步长，相当于"每步沿合力走多远"。迭代直到与目标距离小于容差（本演示取 0.5 km），
+        或达到最大迭代次数。航路长度即相邻离散点欧氏距离之和。
+      </p>
+    </article>
+
+    <article class="card">
+      <h3>④ 符号速查</h3>
+      <table class="tbl">
+        <thead><tr><th>符号</th><th>含义</th><th>条件 1</th><th>条件 2</th></tr></thead>
+        <tbody>
+          <tr><td><i>q<sub>g</sub></i></td><td>目标终点位置</td><td colspan="2">(100, 100) km</td></tr>
+          <tr><td><i>q<sub>obs</sub></i></td><td>障碍（禁飞区）位置</td><td colspan="2">(20,40)、(80,60) km</td></tr>
+          <tr><td><i>q</i></td><td>无人机当前位置</td><td colspan="2">起点 (0, 0) km</td></tr>
+          <tr><td><i>K<sub>att</sub></i></td><td>引力尺度因子</td><td>0.5</td><td>0.5</td></tr>
+          <tr><td><i>d<sub>t</sub></i></td><td>引力距离因子</td><td>20</td><td>20</td></tr>
+          <tr><td><i>K<sub>rep</sub></i></td><td>斥力尺度因子</td><td>43.75</td><td>140</td></tr>
+          <tr><td><i>d<sub>obs</sub></i></td><td>斥力距离因子</td><td>30</td><td>40</td></tr>
+          <tr><td><i>&eta;</i></td><td>迭代步长</td><td>0.05</td><td>0.05</td></tr>
+        </tbody>
+      </table>
+      <p class="mnote">
+        条件 2 增大了 <i>K<sub>rep</sub></i> 与 <i>d<sub>obs</sub></i>，意味着无人机更早、更强地被推开，因此绕行幅度更大、航路更长。
+        实测：条件 1 航路 <b id="mLen1">—</b>，条件 2 航路 <b id="mLen2">—</b>。
+      </p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 4 缺陷与改进 ============ -->
+<section id="defects">
+  <h2><span class="no">4</span>常见缺陷与对应改进</h2>
+  <p class="lead">
+    人工势场法计算量小、实时性好，但存在若干固有缺陷。下面复现 6 个典型问题，
+    每个都给出<b>成因</b>、<b>改进措施</b>，并可直接一键载入仿真台查看前后对比。表中数值为页面加载时实算结果。
+  </p>
+  <div class="def-list" id="defList"></div>
+</section>
+
+</main>
+
+<footer class="ft">
+  <div class="wrap">
+    <div>人工势场法（APF）航路规划交互演示 · 算法与参数取自课程幻灯片：引力势场 / 斥力势场 / 力合成与位置迭代 / 任务条件 / 两组参数条件</div>
+    <div class="ft-s">坐标单位 km ｜ 起点 (0,0) ｜ 目标 (100,100) ｜ 禁飞区 (20,40) r=17.5、(80,60) r=17.5</div>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/apf.js"></script>
+<script src="js/field.js"></script>
+<script src="js/view.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
